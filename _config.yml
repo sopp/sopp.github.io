@@ -1,4 +1,5 @@
-name:SiGna1
-theme: jekyll-theme-time-machine
-url:"http://io.nyoi.org"
-markdown:kramdown
+title: Cayman theme
+description: Cayman is a clean, responsive theme for GitHub Pages.
+show_downloads: true
+google_analytics:
+theme: jekyll-theme-cayman
