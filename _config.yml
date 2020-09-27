@@ -1,1 +1,4 @@
+name:SiGna1
 theme: jekyll-theme-time-machine
+url:"http://io.nyoi.org"
+markdown:kramdown
