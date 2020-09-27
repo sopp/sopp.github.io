@@ -2,5 +2,5 @@ title: SiGNa1
 description: Hello world,but nobody listening.
 show_downloads: False
 google_analytics:
-markdown:kramdown
+markdown: kramdown
 theme: jekyll-theme-cayman
