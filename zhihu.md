@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: default
 title: "当知乎在讨论杨超越的时候"
 permalink: /z/
 date: "2020-09-28 12:00:00"
