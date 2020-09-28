@@ -1,73 +1,36 @@
 ---
 layout: default
-title: "ycy topic"
-permalink: /zhihu/
+title: "当知乎在讨论杨超越的时候知乎在讨论什么？"
+permalink: /zhihu.ycy/
+date: "2020-09-28 12:00:00"
+description: "知乎杨超越话题的一些数据整理"
+
 ---
-
-```python
-# import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
-pd.set_option("max_colwidth", 100)
-```
 
 ## 读取数据
 
-数据已经经过清洗，后续尽量不使用和构造中间变量，所有结果以附加列和查询语句呈现
+- 数据来源限定是杨超越话题下所有问题和提问，没有文章和专栏的数据，未带话题的也不在范围内。
+- 数据抓取的时间是9月15日前后
+- 数据已经经过清洗，后续尽量不使用和构造中间变量，所有结果以附加列和查询语句呈现。
 
-
-```python
-questions = pd.read_csv("/home/sopp/docker/csv/ycy0914.questions.csv")
-questions.create_at = pd.to_datetime(questions.create_at)
-```
-
-
-```python
-modify = pd.read_csv("/home/sopp/docker/csv/ycy0915.modify.csv")
-modify.modify_at = pd.to_datetime(modify.modify_at)
-```
-
-
-```python
-answers = pd.read_csv("/home/sopp/docker/csv/ycy0918.answers.csv")
-answers.create_at = pd.to_datetime(answers.create_at)
-```
-
-
-```python
-people = pd.read_csv("/home/sopp/docker/csv/ycy0919.people.csv")
-```
-
-
-```python
-poeple["url"] = "https://www.zhihu.com/people/" + people.user_id.astype(str)
-```
-
-
-```python
-answers["url"] = (
-    "https://www.zhihu.com/question/"
-    + answers.question_id.astype(str)
-    + "/answer/"
-    + answers.answer_id.astype(str)
-)
-```
 
 ## summary
+
+- 问题4130个
+- 回答16w
+- 浏览8亿
+- 参与者6w
+
+按月汇总的六项数据趋势图，可以看个直观印象。后面有时间也许会做个相关性，虽然谁都知道回答越多点赞越多浏览越多。
 
 
 ```python
 %%time
-#fig,ax=plt.subplots(3,2,figsize=(12,8))
 pd.concat(
     [
         questions.set_index("question_id"),
         modify[(modify.modify_by == "zhihuadmin") & (modify.reason.str.contains("热榜"))]
-        .groupby("question_id")
-        .modify_id.count()
-        .rename("is_hot"),
+        .groupby("question_id").modify_id.count().rename("is_hot"),
         questions.groupby("question_id").question_id.count().rename("questions"),
         answers.groupby("question_id").answer_id.count().rename("answers"),
         answers.groupby("question_id").voteups.sum().rename("voteups"),
@@ -75,30 +38,26 @@ pd.concat(
     ],
     axis=1,
 ).reset_index()[
-    [
-        "questions",
-        "answers",
-        "views",
-        "voteups",
-        "answer_comments",
-        "create_at",
-        "is_hot",
-    ]
+    ["questions","answers","views","voteups","answer_comments","create_at","is_hot",]
 ].groupby(
     pd.Grouper(key="create_at", freq="m")
-).sum().plot(
-    kind="bar", subplots=True, layout=(3, 2), figsize=(12, 8), title="summary"
-)[0,0]
+).sum().plot(kind="bar", subplots=True, layout=(3, 2), figsize=(20, 15), title="summary")
 ```
 
-    CPU times: user 1.65 s, sys: 1.96 ms, total: 1.65 s
-    Wall time: 1.85 s
+    CPU times: user 1.62 s, sys: 25.7 ms, total: 1.65 s
+    Wall time: 1.77 s
 
 
 
 
 
-    <AxesSubplot:title={'center':'questions'}, xlabel='create_at'>
+    array([[<AxesSubplot:title={'center':'questions'}, xlabel='create_at'>,
+            <AxesSubplot:title={'center':'answers'}, xlabel='create_at'>],
+           [<AxesSubplot:title={'center':'views'}, xlabel='create_at'>,
+            <AxesSubplot:title={'center':'voteups'}, xlabel='create_at'>],
+           [<AxesSubplot:title={'center':'answer_comments'}, xlabel='create_at'>,
+            <AxesSubplot:title={'center':'is_hot'}, xlabel='create_at'>]],
+          dtype=object)
 
 
 
@@ -108,16 +67,11 @@ pd.concat(
 
 ## 人物
 
-  分年度的groupby
-- 个人信息，url,id等
-- 关注者数量
-- 回答次数，关联问题和回答信息，url等
-- 获赞数量，关联问题和回答信息，问题标题等
-- 编辑次数，关联问题信息问题
-- 提问数
-    * 优质问题数
+以人物为主键的一些汇总数据，尽量不使用具体的用户名。
 
 #### 编辑次数
+
+知乎问题日志页的api相当古老，没有用户id，清洗过程中用url_token匹配提问者回答者查询id填写，没匹配到（这个人没有提问回答过或者开了隐私选项的）用hash值生成一个id。会有一些重复
 
 
 ```python
@@ -126,8 +80,8 @@ pd.concat(
 a = modify[modify.modify_at.isin(modify[modify.action.str.contains("添加了问题")].modify_at)]
 ```
 
-    CPU times: user 33.7 ms, sys: 811 µs, total: 34.5 ms
-    Wall time: 44.9 ms
+    CPU times: user 37.7 ms, sys: 1.03 ms, total: 38.7 ms
+    Wall time: 50.1 ms
 
 
 
@@ -136,16 +90,10 @@ a = modify[modify.modify_at.isin(modify[modify.action.str.contains("添加了问
 pd.concat(
     [
         people.set_index("user_id"),
-        #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
-        modify.drop(index=a.index)
-        .groupby("modify_by")
-        .modify_at.count()
-        .rename("modifies"),
+        modify.drop(index=a.index).groupby("modify_by").modify_at.count().rename("modifies"),
         modify.drop(index=a.index)
         .groupby(["modify_by", pd.Grouper(key="modify_at", freq="y")])
-        .modify_id.count()
-        .rename("modifies")
-        .reset_index()
+        .modify_id.count().rename("modifies").reset_index()
         .pivot(index="modify_by", columns="modify_at"),
     ],
     axis=1,
@@ -153,15 +101,11 @@ pd.concat(
     by="modifies",
     #   by=("modifies", pd.Timestamp("2018-12-31")),
     ascending=False,
-).iloc[
-    :, [1, 6, 7, 8, 9]
-].head(
-    10
-)
+).iloc[:, [6, 7, 8, 9]].head(10)
 ```
 
-    CPU times: user 211 ms, sys: 4.04 ms, total: 215 ms
-    Wall time: 248 ms
+    CPU times: user 210 ms, sys: 13.4 ms, total: 224 ms
+    Wall time: 262 ms
 
 
 
@@ -185,7 +129,6 @@ pd.concat(
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>name</th>
       <th>modifies</th>
       <th>(modifies, 2018-12-31 00:00:00)</th>
       <th>(modifies, 2019-12-31 00:00:00)</th>
@@ -195,7 +138,6 @@ pd.concat(
   <tbody>
     <tr>
       <th>0</th>
-      <td>匿名用户</td>
       <td>1733.0</td>
       <td>544.0</td>
       <td>820.0</td>
@@ -203,7 +145,6 @@ pd.concat(
     </tr>
     <tr>
       <th>ab387c207374d294c94b04078d3e45ff</th>
-      <td>罗伯特萝卜</td>
       <td>1112.0</td>
       <td>NaN</td>
       <td>6.0</td>
@@ -211,7 +152,6 @@ pd.concat(
     </tr>
     <tr>
       <th>zhihuadmin</th>
-      <td>知乎管理员</td>
       <td>924.0</td>
       <td>192.0</td>
       <td>472.0</td>
@@ -219,7 +159,6 @@ pd.concat(
     </tr>
     <tr>
       <th>ade6549bded0d0634715abb5407c5f15</th>
-      <td>faeries</td>
       <td>745.0</td>
       <td>20.0</td>
       <td>719.0</td>
@@ -227,7 +166,6 @@ pd.concat(
     </tr>
     <tr>
       <th>7066cd4e69a47d677f9dc49c06abc8fd</th>
-      <td>呼啦啦</td>
       <td>525.0</td>
       <td>316.0</td>
       <td>189.0</td>
@@ -235,7 +173,6 @@ pd.concat(
     </tr>
     <tr>
       <th>7538737233586633521</th>
-      <td>凤山脚下</td>
       <td>513.0</td>
       <td>421.0</td>
       <td>92.0</td>
@@ -243,7 +180,6 @@ pd.concat(
     </tr>
     <tr>
       <th>ec80c92729eb9fbf160b296c08afb508</th>
-      <td>胡靖逸</td>
       <td>371.0</td>
       <td>31.0</td>
       <td>211.0</td>
@@ -251,7 +187,6 @@ pd.concat(
     </tr>
     <tr>
       <th>dcd5a53ece0b19b4d8ea9986fc7aa9e0</th>
-      <td>「已注销」</td>
       <td>313.0</td>
       <td>53.0</td>
       <td>248.0</td>
@@ -259,7 +194,6 @@ pd.concat(
     </tr>
     <tr>
       <th>59d0ba88b217bb558486cb3fe52d5657</th>
-      <td>杨超越黑粉头子站</td>
       <td>275.0</td>
       <td>NaN</td>
       <td>235.0</td>
@@ -267,7 +201,6 @@ pd.concat(
     </tr>
     <tr>
       <th>8299b98000e901c2aa577107c553e1e7</th>
-      <td>ZZHONGG</td>
       <td>250.0</td>
       <td>39.0</td>
       <td>206.0</td>
@@ -278,6 +211,10 @@ pd.concat(
 </div>
 
 
+
+tips：
+- 两个特殊的用户id正好都在，zhihuadmin是日志页的知乎管理员，0是匿名用户，后面所有查询结果里几乎都有它的身影。
+- 7066c这位用户是除匿名用户外提问最多的，不过她应该是腾讯综艺相关的账号，个人特质比较淡化。
 
 #### 提问次数
 
@@ -290,23 +227,19 @@ pd.concat(
         #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
         questions.groupby("create_by").question_id.count().rename("questions"),
         questions.groupby(["create_by", pd.Grouper(key="create_at", freq="y")])
-        .question_id.count()
-        .rename("questions")
-        .reset_index()
+        .question_id.count().rename("questions").reset_index()
         .pivot(index="create_by", columns="create_at"),
     ],
     axis=1,
 ).sort_values(
-    #  by="answer",
-    by=("questions", pd.Timestamp("2019-12-31")),
+    by="questions",
+    # by=("questions", pd.Timestamp("2020-12-31")),
     ascending=False,
-).iloc[
-    :, 6:
-].head()
+).iloc[:, 6:].head(10)
 ```
 
-    CPU times: user 174 ms, sys: 2.5 ms, total: 176 ms
-    Wall time: 221 ms
+    CPU times: user 169 ms, sys: 1.72 ms, total: 171 ms
+    Wall time: 220 ms
 
 
 
@@ -352,10 +285,31 @@ pd.concat(
       <td>8.0</td>
     </tr>
     <tr>
-      <th>4774a65b0f6722baf5292750f4df2513</th>
-      <td>11.0</td>
+      <th>f274e1341e781403a934ed118c3f8139</th>
+      <td>18.0</td>
+      <td>18.0</td>
       <td>NaN</td>
-      <td>11.0</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>dcd5a53ece0b19b4d8ea9986fc7aa9e0</th>
+      <td>18.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>18.0</td>
+    </tr>
+    <tr>
+      <th>9df062f3d18b3997be2608b119da22c8</th>
+      <td>15.0</td>
+      <td>5.0</td>
+      <td>8.0</td>
+      <td>2.0</td>
+    </tr>
+    <tr>
+      <th>9bde85cac961a0d20abe3180f708a43a</th>
+      <td>15.0</td>
+      <td>15.0</td>
+      <td>NaN</td>
       <td>NaN</td>
     </tr>
     <tr>
@@ -366,10 +320,24 @@ pd.concat(
       <td>4.0</td>
     </tr>
     <tr>
-      <th>377a423aa9805c6b8bd4e3fb403a7f29</th>
-      <td>11.0</td>
+      <th>04566a874eafd242929d11fee0572c98</th>
+      <td>14.0</td>
+      <td>NaN</td>
+      <td>9.0</td>
+      <td>5.0</td>
+    </tr>
+    <tr>
+      <th>b7d7da2bae4392decc99230fa3f1cf3f</th>
+      <td>13.0</td>
       <td>1.0</td>
-      <td>10.0</td>
+      <td>8.0</td>
+      <td>4.0</td>
+    </tr>
+    <tr>
+      <th>0f9ab983f0da7448fda1e736ed6c3b44</th>
+      <td>12.0</td>
+      <td>7.0</td>
+      <td>5.0</td>
       <td>NaN</td>
     </tr>
   </tbody>
@@ -377,6 +345,11 @@ pd.concat(
 </div>
 
 
+
+tips
+- 7066c后期的一些综艺相关提问比如心动信号没有带话题，因此提问数量有所下降。
+- dcd5a这位用户目前已注销，之前使用的id是星星的你。
+- 本来打算做个提问质量排名的，不过有数量也差不多够了
 
 #### 回答数
 
@@ -389,9 +362,7 @@ pd.concat(
         #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
         answers.groupby("create_by").answer_id.count().rename("answers"),
         answers.groupby(["create_by", pd.Grouper(key="create_at", freq="y")])
-        .answer_id.count()
-        .rename("answers")
-        .reset_index()
+        .answer_id.count().rename("answers").reset_index()
         .pivot(index="create_by", columns="create_at"),
     ],
     axis=1,
@@ -399,13 +370,11 @@ pd.concat(
     #  by="answer",
     by=("answers", pd.Timestamp("2020-12-31")),
     ascending=False,
-).iloc[
-    :, 6:
-].head()
+).iloc[:, 6:].head(10)
 ```
 
-    CPU times: user 1.47 s, sys: 36.1 ms, total: 1.5 s
-    Wall time: 1.7 s
+    CPU times: user 1.46 s, sys: 5.09 ms, total: 1.47 s
+    Wall time: 1.64 s
 
 
 
@@ -471,11 +440,50 @@ pd.concat(
       <td>79.0</td>
       <td>90.0</td>
     </tr>
+    <tr>
+      <th>0849e422a09b62d44a629fb9b119d055</th>
+      <td>95.0</td>
+      <td>NaN</td>
+      <td>16.0</td>
+      <td>79.0</td>
+    </tr>
+    <tr>
+      <th>46c5a6ec4168f99b595f62da3b080b75</th>
+      <td>156.0</td>
+      <td>NaN</td>
+      <td>88.0</td>
+      <td>68.0</td>
+    </tr>
+    <tr>
+      <th>86e3534f1a227d6bdc94a55d4ff21335</th>
+      <td>65.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>65.0</td>
+    </tr>
+    <tr>
+      <th>9f2563cf848c300541929b5c18771349</th>
+      <td>65.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>65.0</td>
+    </tr>
+    <tr>
+      <th>16645f0ddefbc766af04f881a68a3714</th>
+      <td>151.0</td>
+      <td>17.0</td>
+      <td>69.0</td>
+      <td>65.0</td>
+    </tr>
   </tbody>
 </table>
 </div>
 
 
+
+tips
+- 20年前10名回答数只有两个人在18年有回答
+- 其实18年回答数前列在20年活跃也比较少，因此后面做了个话题活跃参与者活动区间的查询。
 
 #### 分区间获赞数
 
@@ -488,22 +496,19 @@ pd.concat(
         #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
         answers.groupby("create_by").voteups.sum(),
         answers.groupby(["create_by", pd.Grouper(key="create_at", freq="y")])
-        .voteups.sum()
-        .reset_index()
+        .voteups.sum().reset_index()
         .pivot(index="create_by", columns="create_at"),
     ],
     axis=1,
 ).sort_values(
     #  by="answer_count",
-    by=("voteups", pd.Timestamp("2018-12-31")),
+    by=("voteups", pd.Timestamp("2020-12-31")),
     ascending=False,
-).iloc[
-    :, 6:
-].head()
+).iloc[:, 6:].head(10)
 ```
 
-    CPU times: user 1.46 s, sys: 17.7 ms, total: 1.48 s
-    Wall time: 1.58 s
+    CPU times: user 1.48 s, sys: 5.31 ms, total: 1.48 s
+    Wall time: 1.61 s
 
 
 
@@ -542,38 +547,78 @@ pd.concat(
       <td>83787.0</td>
     </tr>
     <tr>
-      <th>77c26fba5efd9d3bacdea6a37b7750fb</th>
-      <td>30342.0</td>
-      <td>23619.0</td>
-      <td>4880.0</td>
-      <td>1843.0</td>
-    </tr>
-    <tr>
-      <th>ade6549bded0d0634715abb5407c5f15</th>
-      <td>100967.0</td>
-      <td>22352.0</td>
-      <td>77947.0</td>
-      <td>668.0</td>
-    </tr>
-    <tr>
-      <th>e9178069292478545259bec37881b341</th>
-      <td>21982.0</td>
-      <td>21865.0</td>
-      <td>94.0</td>
-      <td>23.0</td>
-    </tr>
-    <tr>
-      <th>259d303447c2dd0d3fc6c603007f46b7</th>
-      <td>16860.0</td>
-      <td>16860.0</td>
+      <th>266c56db63b21698b8c1546af22984cb</th>
+      <td>51680.0</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>51680.0</td>
+    </tr>
+    <tr>
+      <th>abc4af939f9f1ed31f460f8b52db64b5</th>
+      <td>51577.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>51577.0</td>
+    </tr>
+    <tr>
+      <th>ab387c207374d294c94b04078d3e45ff</th>
+      <td>51889.0</td>
+      <td>NaN</td>
+      <td>1076.0</td>
+      <td>50813.0</td>
+    </tr>
+    <tr>
+      <th>aaf42c0bbe33855d7cfe542b3da31101</th>
+      <td>64655.0</td>
+      <td>NaN</td>
+      <td>21597.0</td>
+      <td>43058.0</td>
+    </tr>
+    <tr>
+      <th>a2b48374f34679e977a129559c95efb7</th>
+      <td>30344.0</td>
+      <td>NaN</td>
+      <td>656.0</td>
+      <td>29688.0</td>
+    </tr>
+    <tr>
+      <th>f3590554f8330279ecf909dcb3b6ab0a</th>
+      <td>23207.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>23207.0</td>
+    </tr>
+    <tr>
+      <th>04566a874eafd242929d11fee0572c98</th>
+      <td>36527.0</td>
+      <td>NaN</td>
+      <td>13469.0</td>
+      <td>23058.0</td>
+    </tr>
+    <tr>
+      <th>5a90ce9ac1466421474769ccdb54ed37</th>
+      <td>26843.0</td>
+      <td>NaN</td>
+      <td>4587.0</td>
+      <td>22256.0</td>
+    </tr>
+    <tr>
+      <th>5dd6287c9e641ee9107dd840d9034026</th>
+      <td>20734.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>20734.0</td>
     </tr>
   </tbody>
 </table>
 </div>
 
 
+
+tips
+- 回答质量可比提问质量好做多了，直接用获赞数累计就行。
+- 其中有不少只有一两个回答，算不上活跃参与者；但是有成千上万个赞，可以定义成优质回答者。
+- 20年累计获赞前10名在18年一个赞都没有，老用户里有一些换账号活跃的情况，不过更多的应该是不活跃了。
 
 #### 通过回答者搜索回答
 
@@ -585,7 +630,7 @@ answers.merge(questions[["question_id", "title"]], on="question_id").merge(
     people[["user_id", "name"]], left_on="create_by", right_on="user_id", how="left"
 )[
     #      lambda x: x.name.str.contains("从来不")
-    answers.create_by.str.contains("^7588c")
+    answers.create_by.str.contains("^dcd5a")
     == True
     #      answers.create_by=='0'
 ][
@@ -606,8 +651,8 @@ answers.merge(questions[["question_id", "title"]], on="question_id").merge(
 ).head()
 ```
 
-    CPU times: user 597 ms, sys: 34.1 ms, total: 631 ms
-    Wall time: 690 ms
+    CPU times: user 598 ms, sys: 28.4 ms, total: 626 ms
+    Wall time: 683 ms
 
 
 
@@ -639,39 +684,18 @@ answers.merge(questions[["question_id", "title"]], on="question_id").merge(
   </thead>
   <tbody>
     <tr>
-      <th>55349</th>
-      <td>颜值顶点杨超越</td>
-      <td>35</td>
-      <td>讨厌杨超越的大约都是哪些人？</td>
-      <td>2018-12-20 08:13:41</td>
-    </tr>
-    <tr>
-      <th>54072</th>
-      <td>颜值顶点杨超越</td>
-      <td>3</td>
-      <td>如何看待杨超越在2018年度腾讯星光大赏获得节目新锐之星？</td>
-      <td>2018-12-20 07:56:49</td>
-    </tr>
-    <tr>
-      <th>54149</th>
-      <td>颜值顶点杨超越</td>
+      <th>151834</th>
+      <td>「已注销」</td>
       <td>2</td>
-      <td>如何评价杨超越12月18日在超话上对粉丝的回应？</td>
-      <td>2018-12-20 07:51:09</td>
+      <td>杨超越被礼炮吓到真的很胆小反应过激吗？是不是有刻意演的成分？</td>
+      <td>2020-07-08 13:00:49</td>
     </tr>
     <tr>
-      <th>54913</th>
-      <td>颜值顶点杨超越</td>
-      <td>27</td>
-      <td>杨超越给社会带来的正能量更多还是负能量更多呢？</td>
-      <td>2018-12-19 02:28:15</td>
-    </tr>
-    <tr>
-      <th>54473</th>
-      <td>颜值顶点杨超越</td>
-      <td>21</td>
-      <td>杨超越登上中国新闻周刊封面代表着什么？</td>
-      <td>2018-12-18 23:43:18</td>
+      <th>147192</th>
+      <td>「已注销」</td>
+      <td>6</td>
+      <td>如何看待杨超越虎扑女神大赛中止步 32 强？</td>
+      <td>2020-06-22 22:56:55</td>
     </tr>
   </tbody>
 </table>
@@ -679,9 +703,15 @@ answers.merge(questions[["question_id", "title"]], on="question_id").merge(
 
 
 
+tips：
+- 用户dcd5a虽然提问很多，但只有两个回答，也许是匿名了。
+- 用户名查询回答挺方便的，尤其对于马甲账户有统一命名规则的几位
+
 #### todo:知乎管理员的账号
 
 日志中，知乎管理员锁定前十分钟内编辑过问题的账号统计
+
+这个查询还没写，定义应该没问题。
 
 #### 平均获赞数
 
@@ -696,18 +726,16 @@ pd.concat(
         answers.groupby("create_by").voteups.agg("mean").rename("mean"),
     ],
     axis=1,
-)[lambda x: x.answers > 40].sort_values(
+)[
+    lambda x: x.answers
+    > 40
+].sort_values(
     by="mean",
-    #     by= ('answers',pd.Timestamp('2019-12-31')),
     ascending=False,
-).iloc[
-    :, [1, 6, 7, 8]
-].head(
-    20
-)
+).iloc[:, [6, 7, 8]].head(10)
 ```
 
-    CPU times: user 1.33 s, sys: 39.1 ms, total: 1.37 s
+    CPU times: user 1.32 s, sys: 3.48 ms, total: 1.32 s
     Wall time: 1.51 s
 
 
@@ -732,7 +760,6 @@ pd.concat(
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>name</th>
       <th>answers</th>
       <th>voteups</th>
       <th>mean</th>
@@ -741,143 +768,63 @@ pd.concat(
   <tbody>
     <tr>
       <th>ade6549bded0d0634715abb5407c5f15</th>
-      <td>faeries</td>
       <td>79.0</td>
       <td>100967.0</td>
       <td>1278.063291</td>
     </tr>
     <tr>
       <th>ab387c207374d294c94b04078d3e45ff</th>
-      <td>罗伯特萝卜</td>
       <td>47.0</td>
       <td>51889.0</td>
       <td>1104.021277</td>
     </tr>
     <tr>
       <th>aaf42c0bbe33855d7cfe542b3da31101</th>
-      <td>知乎用户</td>
       <td>70.0</td>
       <td>64655.0</td>
       <td>923.642857</td>
     </tr>
     <tr>
       <th>cf8d57bba603fff99f1d763c2aad0bcc</th>
-      <td>激动的鳄鱼</td>
       <td>50.0</td>
       <td>43792.0</td>
       <td>875.840000</td>
     </tr>
     <tr>
       <th>59d0ba88b217bb558486cb3fe52d5657</th>
-      <td>杨超越黑粉头子站</td>
       <td>46.0</td>
       <td>35160.0</td>
       <td>764.347826</td>
     </tr>
     <tr>
       <th>87a3a638c4b24eb3ce94f59447d7e016</th>
-      <td>金色短发少年杨超越</td>
       <td>88.0</td>
       <td>49271.0</td>
       <td>559.897727</td>
     </tr>
     <tr>
       <th>f987bb1c9ee681fef2801b0bf7012b47</th>
-      <td>山风为岚</td>
       <td>52.0</td>
       <td>28889.0</td>
       <td>555.557692</td>
     </tr>
     <tr>
       <th>6f0da7d7cfbe5a3e24304f6e5f0195f8</th>
-      <td>Deng Li</td>
       <td>48.0</td>
       <td>26223.0</td>
       <td>546.312500</td>
     </tr>
     <tr>
       <th>b6e26ca95c17cafe25b4fe4fb8b99c32</th>
-      <td>邓呵呵</td>
       <td>49.0</td>
       <td>24354.0</td>
       <td>497.020408</td>
     </tr>
     <tr>
       <th>4da5a3efc3da23ef7bde393724b96e55</th>
-      <td>例不虚发探花郎</td>
       <td>50.0</td>
       <td>23648.0</td>
       <td>472.960000</td>
-    </tr>
-    <tr>
-      <th>b5be517e7f1ed5aca505dd4b3fd5450f</th>
-      <td>进击的大玉螺旋丸</td>
-      <td>84.0</td>
-      <td>39512.0</td>
-      <td>470.380952</td>
-    </tr>
-    <tr>
-      <th>77c26fba5efd9d3bacdea6a37b7750fb</th>
-      <td>拎着菜刀的诗人</td>
-      <td>71.0</td>
-      <td>30342.0</td>
-      <td>427.352113</td>
-    </tr>
-    <tr>
-      <th>da0d9c31bef9635bb3bd6245e8e148ab</th>
-      <td>夜神月</td>
-      <td>52.0</td>
-      <td>21981.0</td>
-      <td>422.711538</td>
-    </tr>
-    <tr>
-      <th>55347099af432eac9a4a95a7406463fb</th>
-      <td>老猫</td>
-      <td>71.0</td>
-      <td>29075.0</td>
-      <td>409.507042</td>
-    </tr>
-    <tr>
-      <th>0669e40e7c03cd317dcb1500a9f97702</th>
-      <td>工业党徒</td>
-      <td>52.0</td>
-      <td>15060.0</td>
-      <td>289.615385</td>
-    </tr>
-    <tr>
-      <th>7a4cdbd98efd10a459b4b335b581715f</th>
-      <td>怪力乱神</td>
-      <td>48.0</td>
-      <td>13161.0</td>
-      <td>274.187500</td>
-    </tr>
-    <tr>
-      <th>04566a874eafd242929d11fee0572c98</th>
-      <td>风子</td>
-      <td>136.0</td>
-      <td>36527.0</td>
-      <td>268.580882</td>
-    </tr>
-    <tr>
-      <th>b725c3d61bbba313ce475f6c50af1ee8</th>
-      <td>九鼎</td>
-      <td>50.0</td>
-      <td>12541.0</td>
-      <td>250.820000</td>
-    </tr>
-    <tr>
-      <th>276a1d9e562cb514a048363d62012f74</th>
-      <td>知乎用户</td>
-      <td>97.0</td>
-      <td>22393.0</td>
-      <td>230.855670</td>
-    </tr>
-    <tr>
-      <th>74ebc100988d638ed8017ebc164b3dad</th>
-      <td>知乎用户</td>
-      <td>74.0</td>
-      <td>17029.0</td>
-      <td>230.121622</td>
     </tr>
   </tbody>
 </table>
@@ -885,13 +832,18 @@ pd.concat(
 
 
 
+tips：
+- 每个回答的平均获赞数是个不错的评价指标，同时可以用不同回答数划分回答者类型
+- 回答数大于0来筛选的话，前几位的平均数都是一两万
+- 回答数大于40的筛选出来的结果感觉还是比较合理
+- 回答数大于100后，也有一些用户的平均获赞在100以上
+
 #### 话题历史活跃参与者的活动时长
 
 
 
 ```python
 %%time
-# answers.groupby(["create_by", "create_at"]).answer_id.count().rename("answers") > 10
 (
     answers[
         answers.create_by.isin(
@@ -907,11 +859,11 @@ pd.concat(
     #   min().apply(lambda x: x - pd.Timestamp("2018-12-31"))
     #  .describe()
     .sort_values(by="ptp")  # np.ptp
-).ptp.astype("timedelta64[D]").plot.hist(bins=30, figsize=(12, 6), histtype="step")
+).ptp.astype("timedelta64[D]").plot.hist(bins=45, figsize=(12, 6), histtype="step")
 ```
 
-    CPU times: user 751 ms, sys: 6.56 ms, total: 758 ms
-    Wall time: 906 ms
+    CPU times: user 739 ms, sys: 3.93 ms, total: 743 ms
+    Wall time: 810 ms
 
 
 
@@ -922,8 +874,14 @@ pd.concat(
 
 
 
-![png](output_26_2.png)
+![png](output_32_2.png)
 
+
+tips:
+- 话题活跃参与者定义为在话题下拥有5个收到超过5个赞的回答，要求不算太高，但是符合条件的已经只剩不到2000人了。
+- 图表横轴是活跃参与者最后一次回答和第一次回答的时间差，竖轴是相应人数
+- 在200到700天之间的分布比较均匀
+- 也有几个800天以上还在活跃的钉子户
 
 #### 七月后活跃参与者(标准略有降低)的时间
 
@@ -949,8 +907,8 @@ pd.concat(
 ).ptp.astype("timedelta64[D]").plot.hist(bins=30, figsize=(12, 6), histtype="step")
 ```
 
-    CPU times: user 254 ms, sys: 2.83 ms, total: 257 ms
-    Wall time: 283 ms
+    CPU times: user 255 ms, sys: 2.51 ms, total: 258 ms
+    Wall time: 294 ms
 
 
 
@@ -961,8 +919,12 @@ pd.concat(
 
 
 
-![png](output_28_2.png)
+![png](output_35_2.png)
 
+
+tips：
+- 图表7月开始有三个以上回答的活跃时长，这个统计感觉定义不够精确
+- 0到100天的人数高峰还算明显，应该算是话题新关注者
 
 #### 话题历史活跃者增减趋势
 
@@ -1004,12 +966,12 @@ pd.concat(
         .rename("last"),
     ],
     axis=1,
-).plot(kind="bar", subplots=True, figsize=(10, 8))
-#.get_figure().savefig("output.png")
+).plot(kind="bar", subplots=True, figsize=(20, 15))
+# .get_figure().savefig("output.png")
 ```
 
-    CPU times: user 862 ms, sys: 11.6 ms, total: 874 ms
-    Wall time: 979 ms
+    CPU times: user 802 ms, sys: 16.1 ms, total: 819 ms
+    Wall time: 914 ms
 
 
 
@@ -1021,8 +983,15 @@ pd.concat(
 
 
 
-![png](output_30_2.png)
+![png](output_38_2.png)
 
+
+tips：
+- 这个查询写的比较难看
+- 不过出来图表还是比较直观的，上图是活跃参与者首次答题时间，下图是最后一次答题所在的月份。
+- 19年3月份是最后一个入坑高峰，之后趋势放缓。
+- 20年6月份的解散相关问题估计有很多活跃参与者被重新激活。
+- 以最近三月有回答来区分休眠与活动的话，大约还有700个活跃参与者处于活动状态。
 
 ## 问题＆编辑
 
@@ -1057,11 +1026,13 @@ pd.concat(
     ascending=False,
 ).iloc[
     :, [0, 1, 3, 4, 6, 8,]
-].head()
+].head(
+    6
+)
 ```
 
-    CPU times: user 32.8 ms, sys: 0 ns, total: 32.8 ms
-    Wall time: 34.8 ms
+    CPU times: user 32.4 ms, sys: 0 ns, total: 32.4 ms
+    Wall time: 36.2 ms
 
 
 
@@ -1148,11 +1119,24 @@ pd.concat(
       <td>10156292</td>
       <td>85</td>
     </tr>
+    <tr>
+      <th>329812351</th>
+      <td>村民如何才能找到一个三观合得来的NB姐姐做老婆？</td>
+      <td>0</td>
+      <td>1</td>
+      <td>2019-06-17 14:19:00</td>
+      <td>200</td>
+      <td>78</td>
+    </tr>
   </tbody>
 </table>
 </div>
 
 
+
+tips：
+- 大概有170个左右问题有超过20次的编辑
+- 不过很多无人理睬的问题也存在编辑战，特意把查询设为head6凸显一下
 
 #### 知乎管理员的编辑原因
 
@@ -1217,13 +1201,17 @@ modify[modify.modify_by == "zhihuadmin"].reason.value_counts().to_frame()
 
 
 
+tips：
+- 知乎没有历史热榜查询的api，问题属性里也没有热榜相关，因此只能用知乎管理员的锁定理由来定义。
+- 这个当然是不准确的，比如九月份的100斤玉米问题，被优质内容锁定编辑，之后上热榜就没有热榜锁定。
+- 不过现在也只能用这个。
+
 #### 热榜的步进计数
 
 
 ```python
-modify.modify_at = pd.to_datetime(modify.modify_at)
 modify[(modify.modify_by == "zhihuadmin") & (modify.reason.str.contains("热榜"))].groupby(
-    pd.Grouper(key="modify_at", freq="3M")
+    pd.Grouper(key="modify_at", freq="6M")
 ).question_id.count()
 ```
 
@@ -1231,18 +1219,13 @@ modify[(modify.modify_by == "zhihuadmin") & (modify.reason.str.contains("热榜"
 
 
     modify_at
-    2018-05-31     3
-    2018-08-31    22
-    2018-11-30    46
-    2019-02-28    61
-    2019-05-31    58
-    2019-08-31    41
-    2019-11-30    22
-    2020-02-29    12
-    2020-05-31    24
-    2020-08-31    25
-    2020-11-30     2
-    Freq: 3M, Name: question_id, dtype: int64
+    2018-05-31      3
+    2018-11-30     68
+    2019-05-31    119
+    2019-11-30     63
+    2020-05-31     36
+    2020-11-30     27
+    Freq: 6M, Name: question_id, dtype: int64
 
 
 
@@ -1272,8 +1255,8 @@ pd.concat(
 )
 ```
 
-    CPU times: user 82.7 ms, sys: 930 µs, total: 83.6 ms
-    Wall time: 107 ms
+    CPU times: user 80.5 ms, sys: 950 µs, total: 81.5 ms
+    Wall time: 98.4 ms
 
 
 
@@ -1523,6 +1506,10 @@ pd.concat(
 
 
 
+tips：
+- 按照上面的热榜条件，筛选出热榜锁定次数，有16个问题上过两次热榜，不过后面几个问题可能和分区热榜有关，浏览数比较低
+- 第一个问题除了总获赞数以外，其他所有数据都是第一，颜值果然是知乎第一生产力
+
 #### 问题获赞排序(累计,top5,top1)
 
 所有答案的赞数，前五得赞数，第一名赞数
@@ -1530,16 +1517,9 @@ pd.concat(
 
 
 ```python
-#
-def top(series, n=5):
-    return series.sort_values().tail(n).sum()
-```
-
-
-```python
 %%time
 # 见summary
-# group后agg参数，sort_values,first，first5，mean
+# group后agg参数
 (
     pd.concat(
         [
@@ -1548,7 +1528,7 @@ def top(series, n=5):
             answers.groupby("question_id").voteups.max().rename("voteup_top1"),
             answers.sort_values(by="voteups")
             .groupby("question_id")
-            .voteups.agg(top)
+            .voteups.agg(lambda x:x.sort_values().tail().sum())
             .rename("voteup_top5"),
             #    answers.groupby("create_by").voteup_count.sum(),
         ],
@@ -1559,7 +1539,7 @@ def top(series, n=5):
         #    (temp.target_created > '2019-06-30')
         #        (temp.target_created > '2017-06-30')
         lambda x: x.create_at
-        > "2020-01-01"  # reset后索引无效
+        > "2018-01-01"  # reset后索引无效
     ]
     .sort_values(by="voteup_top5", ascending=False)
     .head(20)
@@ -1567,8 +1547,8 @@ def top(series, n=5):
 )
 ```
 
-    CPU times: user 6.16 s, sys: 25.9 ms, total: 6.19 s
-    Wall time: 6.84 s
+    CPU times: user 6.03 s, sys: 7.55 ms, total: 6.03 s
+    Wall time: 6.6 s
 
 
 
@@ -1604,6 +1584,28 @@ def top(series, n=5):
   </thead>
   <tbody>
     <tr>
+      <th>1789</th>
+      <td>为什么篮球迷对蔡徐坤和杨超越是两种态度?</td>
+      <td>1513</td>
+      <td>3557</td>
+      <td>2019-03-16 13:47:00</td>
+      <td>18505892</td>
+      <td>159053.0</td>
+      <td>53206.0</td>
+      <td>101752.0</td>
+    </tr>
+    <tr>
+      <th>1840</th>
+      <td>如何看待杨超越向海里吐口水的行为？</td>
+      <td>1619</td>
+      <td>2889</td>
+      <td>2019-03-25 14:11:00</td>
+      <td>14956927</td>
+      <td>124251.0</td>
+      <td>45648.0</td>
+      <td>96514.0</td>
+    </tr>
+    <tr>
       <th>3044</th>
       <td>为什么诸葛大力（成果、狗哥）的火，会引起部分女生的反感？</td>
       <td>3196</td>
@@ -1624,6 +1626,28 @@ def top(series, n=5):
       <td>81000.0</td>
       <td>23207.0</td>
       <td>60777.0</td>
+    </tr>
+    <tr>
+      <th>870</th>
+      <td>为什么很多人都觉得杨超越的颜值惊为天人，甚至说是超高颜值？</td>
+      <td>2201</td>
+      <td>5705</td>
+      <td>2018-10-01 07:23:00</td>
+      <td>9921757</td>
+      <td>84644.0</td>
+      <td>40418.0</td>
+      <td>51810.0</td>
+    </tr>
+    <tr>
+      <th>417</th>
+      <td>杨超越的颜值是否过誉？</td>
+      <td>3564</td>
+      <td>8099</td>
+      <td>2018-06-26 13:44:00</td>
+      <td>49872496</td>
+      <td>156051.0</td>
+      <td>16860.0</td>
+      <td>51675.0</td>
     </tr>
     <tr>
       <th>3404</th>
@@ -1648,6 +1672,17 @@ def top(series, n=5):
       <td>48653.0</td>
     </tr>
     <tr>
+      <th>2794</th>
+      <td>如何评价杨超越在《奇葩说》里被批判没文化，她的发言真的很浅薄吗？</td>
+      <td>2109</td>
+      <td>5169</td>
+      <td>2019-11-10 00:13:00</td>
+      <td>6443401</td>
+      <td>85160.0</td>
+      <td>25218.0</td>
+      <td>47411.0</td>
+    </tr>
+    <tr>
       <th>4090</th>
       <td>如何看待杨超越说种 100 斤玉米只能买 3 斤猪肉?</td>
       <td>2203</td>
@@ -1659,175 +1694,127 @@ def top(series, n=5):
       <td>37945.0</td>
     </tr>
     <tr>
-      <th>3569</th>
-      <td>如何看待杨超越占用公共资源吐槽车主开远光灯的事件？</td>
-      <td>1378</td>
-      <td>1906</td>
-      <td>2020-06-08 02:17:00</td>
-      <td>1192632</td>
-      <td>27636.0</td>
-      <td>7995.0</td>
-      <td>19743.0</td>
+      <th>2667</th>
+      <td>杨超越被认为皮肤很好，是因为上了较厚的粉底还是真的很好？</td>
+      <td>514</td>
+      <td>1413</td>
+      <td>2019-10-03 03:09:00</td>
+      <td>12890349</td>
+      <td>54562.0</td>
+      <td>16900.0</td>
+      <td>34960.0</td>
     </tr>
     <tr>
-      <th>3643</th>
-      <td>如何评价杨超越在《火箭少女 101 告别典礼》上的发言?</td>
-      <td>1979</td>
-      <td>4074</td>
-      <td>2020-06-23 19:38:00</td>
-      <td>6688773</td>
-      <td>76567.0</td>
-      <td>4824.0</td>
-      <td>18701.0</td>
+      <th>315</th>
+      <td>如何看待《创造101》总决赛杨超越第三名出道？</td>
+      <td>2336</td>
+      <td>4319</td>
+      <td>2018-06-23 23:47:00</td>
+      <td>7308733</td>
+      <td>62107.0</td>
+      <td>21865.0</td>
+      <td>34660.0</td>
     </tr>
     <tr>
-      <th>3761</th>
-      <td>同样是实力不足出道，杨超越、虞书欣和张艺凡有什么区别？</td>
-      <td>526</td>
-      <td>832</td>
-      <td>2020-07-06 04:50:00</td>
-      <td>2324738</td>
-      <td>28729.0</td>
-      <td>4309.0</td>
-      <td>17890.0</td>
+      <th>1764</th>
+      <td>你觉得火箭少女里谁最可怜？</td>
+      <td>858</td>
+      <td>2540</td>
+      <td>2019-03-08 17:30:00</td>
+      <td>12451947</td>
+      <td>77558.0</td>
+      <td>15829.0</td>
+      <td>33007.0</td>
     </tr>
     <tr>
-      <th>3778</th>
-      <td>2020再回首，杨超越现象是否给女团选秀开了个坏头，让一些毫无实力的人高位出道了？</td>
-      <td>791</td>
-      <td>1377</td>
-      <td>2020-07-11 02:47:00</td>
-      <td>1386235</td>
-      <td>24516.0</td>
-      <td>5759.0</td>
-      <td>14189.0</td>
+      <th>1394</th>
+      <td>杨超越的背景到底怎么样？</td>
+      <td>60</td>
+      <td>784</td>
+      <td>2018-12-27 21:31:00</td>
+      <td>3821746</td>
+      <td>31347.0</td>
+      <td>24827.0</td>
+      <td>28284.0</td>
     </tr>
     <tr>
-      <th>3483</th>
-      <td>如何看待杨超越透露明星代言的产品可以免费使用？</td>
-      <td>370</td>
-      <td>1385</td>
-      <td>2020-05-16 22:51:00</td>
-      <td>3540236</td>
-      <td>19822.0</td>
-      <td>6845.0</td>
-      <td>13801.0</td>
+      <th>1</th>
+      <td>如何评价杨超越在《创造101》中的表现？</td>
+      <td>1605</td>
+      <td>3671</td>
+      <td>2018-04-28 23:49:00</td>
+      <td>8306475</td>
+      <td>49177.0</td>
+      <td>16111.0</td>
+      <td>28086.0</td>
     </tr>
     <tr>
-      <th>3667</th>
-      <td>如何看待杨超越将微博认证改为演员、歌手?</td>
-      <td>485</td>
-      <td>932</td>
-      <td>2020-06-24 14:40:00</td>
-      <td>1969660</td>
-      <td>20060.0</td>
-      <td>8773.0</td>
-      <td>12697.0</td>
-    </tr>
-    <tr>
-      <th>3283</th>
-      <td>如何看待杨超越在综艺节目上闻自己的袜子？</td>
-      <td>833</td>
-      <td>1916</td>
-      <td>2020-04-07 22:19:00</td>
-      <td>2663965</td>
-      <td>22118.0</td>
-      <td>3005.0</td>
-      <td>11829.0</td>
-    </tr>
-    <tr>
-      <th>3080</th>
-      <td>如何看待杨超越给郭老师刷礼物？</td>
-      <td>207</td>
-      <td>420</td>
-      <td>2020-02-17 08:43:00</td>
-      <td>1023250</td>
-      <td>14265.0</td>
-      <td>5250.0</td>
-      <td>10818.0</td>
-    </tr>
-    <tr>
-      <th>3430</th>
-      <td>喜欢杨超越的人也会喜欢虞书欣吗?</td>
-      <td>507</td>
-      <td>569</td>
-      <td>2020-05-04 14:12:00</td>
-      <td>498584</td>
-      <td>13544.0</td>
-      <td>6445.0</td>
-      <td>9722.0</td>
-    </tr>
-    <tr>
-      <th>3491</th>
-      <td>杨超越适合演《三体》里的庄颜吗?</td>
-      <td>371</td>
-      <td>649</td>
-      <td>2020-05-18 13:51:00</td>
-      <td>1000877</td>
-      <td>10769.0</td>
-      <td>4478.0</td>
-      <td>8719.0</td>
-    </tr>
-    <tr>
-      <th>3620</th>
-      <td>如何评价杨超越在《炙热的我们》中的「僵尸新娘」造型？</td>
+      <th>528</th>
+      <td>杨超越的心理素质如何？</td>
       <td>284</td>
-      <td>825</td>
-      <td>2020-06-20 19:19:00</td>
-      <td>2280422</td>
-      <td>11347.0</td>
-      <td>3410.0</td>
-      <td>8071.0</td>
+      <td>1393</td>
+      <td>2018-07-22 14:13:00</td>
+      <td>6389207</td>
+      <td>40575.0</td>
+      <td>11481.0</td>
+      <td>25929.0</td>
     </tr>
     <tr>
-      <th>3177</th>
-      <td>虞书欣会成为下一个杨超越吗？</td>
-      <td>388</td>
-      <td>497</td>
-      <td>2020-03-16 00:08:00</td>
-      <td>1177631</td>
-      <td>11174.0</td>
-      <td>5986.0</td>
-      <td>8035.0</td>
+      <th>2668</th>
+      <td>为什么现在杨超越风评逐渐变好孟美岐变差？</td>
+      <td>202</td>
+      <td>604</td>
+      <td>2019-10-03 11:50:00</td>
+      <td>2487440</td>
+      <td>30403.0</td>
+      <td>12566.0</td>
+      <td>24080.0</td>
     </tr>
     <tr>
-      <th>3540</th>
-      <td>鹅厂不给杨超越资源她还能继续火下去吗？</td>
-      <td>185</td>
-      <td>561</td>
-      <td>2020-06-02 00:17:00</td>
-      <td>1428579</td>
-      <td>11720.0</td>
-      <td>2333.0</td>
-      <td>7725.0</td>
+      <th>4</th>
+      <td>为什么杨超越唱跳实力一般但是有这么多人喜欢？</td>
+      <td>1458</td>
+      <td>2992</td>
+      <td>2018-05-06 06:40:00</td>
+      <td>9806458</td>
+      <td>47273.0</td>
+      <td>11301.0</td>
+      <td>22376.0</td>
     </tr>
     <tr>
-      <th>3154</th>
-      <td>杨超越为什么能力不是最拔尖的，却是101里最受欢迎并且拿的资源最多的人？</td>
-      <td>531</td>
-      <td>1165</td>
-      <td>2020-03-09 16:58:00</td>
-      <td>2524953</td>
-      <td>18130.0</td>
-      <td>4708.0</td>
-      <td>7721.0</td>
+      <th>1261</th>
+      <td>如果杨超越和詹青云同时追你，你选谁？</td>
+      <td>2152</td>
+      <td>2871</td>
+      <td>2018-12-03 14:43:00</td>
+      <td>3414243</td>
+      <td>34791.0</td>
+      <td>10277.0</td>
+      <td>22353.0</td>
     </tr>
     <tr>
-      <th>3455</th>
-      <td>为什么《创1》杨超越哭黄子韬还安慰她，到了《创3》别的选手就不一样了？</td>
-      <td>96</td>
-      <td>156</td>
-      <td>2020-05-08 12:27:00</td>
-      <td>1003933</td>
-      <td>9260.0</td>
-      <td>4583.0</td>
-      <td>7261.0</td>
+      <th>260</th>
+      <td>《创造101》中，你对哪位选手改观最大？</td>
+      <td>409</td>
+      <td>1326</td>
+      <td>2018-06-16 19:53:00</td>
+      <td>9353408</td>
+      <td>42351.0</td>
+      <td>6031.0</td>
+      <td>22078.0</td>
     </tr>
   </tbody>
 </table>
 </div>
 
 
+
+tips：
+- 自己写的函数比np里用c写出来的慢差不多好几百倍，这个查询因此拖得很慢
+- 每个问题获赞前五、前一、全部的累积，个人感觉上还是前5比较实用，因为我很少看第六个回答，其次应当是前一
+- 前五或者前一占总获赞的比例，可以看出这个问题是被少数几个优质回答带起来的，还是参与人数多表达欲望强烈的结果。
+- 比如3404的这个问题，前一几乎包圆了总获赞
+- 还有3174这个问题，前5的比例不到40%
 
 #### 浏览前200位中回答数最少的问题
 附加总获赞数
@@ -1844,14 +1831,13 @@ pd.concat(
 ).reset_index()[
     #       (temp.target_created < '2020-01-01')&
     #    (temp.target_created > '2019-06-30')
-    (questions.create_at > "2017-06-30")
+    lambda x: x.views
+    > 1000000
 ].sort_values(
-    by="views", ascending=False
-).head(
-    200
-).sort_values(
     by="answer_count", ascending=True
-).head().iloc[
+).head(
+    10
+).iloc[
     :, [1, 2, 4, 7, 9]
 ]
 ```
@@ -1894,20 +1880,20 @@ pd.concat(
       <td>5142.0</td>
     </tr>
     <tr>
-      <th>2315</th>
-      <td>如何评价“富婆收割机”杨超越?</td>
-      <td>36</td>
-      <td>159</td>
-      <td>1322303</td>
-      <td>6944.0</td>
-    </tr>
-    <tr>
       <th>1501</th>
       <td>杨超越吹过的牛实现了多少？</td>
       <td>36</td>
       <td>256</td>
       <td>1541435</td>
       <td>5988.0</td>
+    </tr>
+    <tr>
+      <th>2315</th>
+      <td>如何评价“富婆收割机”杨超越?</td>
+      <td>36</td>
+      <td>159</td>
+      <td>1322303</td>
+      <td>6944.0</td>
     </tr>
     <tr>
       <th>215</th>
@@ -1918,6 +1904,14 @@ pd.concat(
       <td>7515.0</td>
     </tr>
     <tr>
+      <th>1526</th>
+      <td>如何评价火箭少女集体素颜出镜？谁的素颜最能打？</td>
+      <td>45</td>
+      <td>116</td>
+      <td>1391384</td>
+      <td>2478.0</td>
+    </tr>
+    <tr>
       <th>1236</th>
       <td>火箭少女101的成员中有哪些有趣的共性和个性？</td>
       <td>45</td>
@@ -1925,11 +1919,47 @@ pd.concat(
       <td>1557423</td>
       <td>5401.0</td>
     </tr>
+    <tr>
+      <th>2151</th>
+      <td>为什么黄子韬在杨超越第一次表演时想给她A不过最终宣布是C？</td>
+      <td>46</td>
+      <td>152</td>
+      <td>1755433</td>
+      <td>8312.0</td>
+    </tr>
+    <tr>
+      <th>3050</th>
+      <td>杨超越是如何一夜之间积累起人气来的？</td>
+      <td>47</td>
+      <td>162</td>
+      <td>1062079</td>
+      <td>6886.0</td>
+    </tr>
+    <tr>
+      <th>2988</th>
+      <td>火箭少女101每个人家境如何？</td>
+      <td>52</td>
+      <td>413</td>
+      <td>3427471</td>
+      <td>6996.0</td>
+    </tr>
+    <tr>
+      <th>1394</th>
+      <td>杨超越的背景到底怎么样？</td>
+      <td>60</td>
+      <td>784</td>
+      <td>3821746</td>
+      <td>31347.0</td>
+    </tr>
   </tbody>
 </table>
 </div>
 
 
+
+tips：
+- 大于100w浏览的问题中，回答数量较少的问题
+- 这部分问题浏览应该更加依赖于知乎的推荐算法，可以看到一般的知乎用户感兴趣的方向
 
 #### 浏览10w以下回答数量最多的问题
 附加获赞数
@@ -1940,11 +1970,9 @@ pd.concat(
     [
         questions.set_index("question_id"),
         answers.groupby("question_id").voteups.sum(),
-        #    answers.groupby("create_by").voteup_count.sum(),
     ],
     axis=1,
 ).reset_index()[
-    #  remp.create_at < '2020'
     lambda x: x.views
     < 100000
 ].sort_values(
@@ -2081,6 +2109,10 @@ pd.concat(
 </div>
 
 
+
+tips：
+- 小于10w浏览但是回答很多的问题
+- 和上面相对，这些问题主要是粉丝们取暖的场所，价值一般
 
 #### todo:非热榜浏览数最多的问题
 
@@ -2232,6 +2264,10 @@ pd.concat(
 
 
 
+tips：
+- 提问时带了话题，后续编辑去掉了，不过还在话题api里，列出来参考
+- 3679这个问题对不少查询结果有干扰
+
 ## 回答
 
 - 赞数
@@ -2246,11 +2282,11 @@ pd.concat(
 %%time
 answers.merge(questions[["title", "question_id"]], on="question_id").sort_values(
     by="voteups", ascending=False
-).iloc[:, [8, 1, 2, 3]].head(10)
+).iloc[:, [7, 1, 2, 3]].head(10)
 ```
 
-    CPU times: user 300 ms, sys: 23.8 ms, total: 324 ms
-    Wall time: 383 ms
+    CPU times: user 231 ms, sys: 13.7 ms, total: 244 ms
+    Wall time: 273 ms
 
 
 
@@ -2357,7 +2393,11 @@ answers.merge(questions[["title", "question_id"]], on="question_id").sort_values
 
 
 
-#### 按评论数排序的回答.aka 对线战场
+tips：
+- 高赞梯队的内部阶梯还是比较大，10个回答就从5w赞跌到到2w了
+- 一个优质回答的作用非常大，比如36997和137897都是在时隔很久之后把问题带上热榜
+
+#### 按评论数排序的回答， 对线战场1
 
 
 ```python
@@ -2475,7 +2515,375 @@ answers.merge(questions[["title", "question_id"]], on="question_id").sort_values
 
 
 
-#### todo:上面两个的是否匿名标签
+#### 评论获赞比 ，对线战场2
+
+
+```python
+answers[answers.comments > 99][(lambda x: x.voteups / x.comments < 1)].sort_values(
+    by="comments", ascending=False
+)
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>answer_id</th>
+      <th>voteups</th>
+      <th>comments</th>
+      <th>create_at</th>
+      <th>update_at</th>
+      <th>question_id</th>
+      <th>create_by</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>127523</th>
+      <td>1137417180</td>
+      <td>487</td>
+      <td>1160</td>
+      <td>2020-04-08 13:44:01</td>
+      <td>2020-06-29 15:21:32</td>
+      <td>379710349</td>
+      <td>f0b89c5eea584907229b7e8804aefa6c</td>
+    </tr>
+    <tr>
+      <th>120312</th>
+      <td>1007936565</td>
+      <td>303</td>
+      <td>649</td>
+      <td>2020-02-10 11:08:14</td>
+      <td>2020-02-12 06:54:57</td>
+      <td>367912247</td>
+      <td>78cb308a2e1bd66dd5b7d4a91aa29e43</td>
+    </tr>
+    <tr>
+      <th>149590</th>
+      <td>1299659533</td>
+      <td>231</td>
+      <td>586</td>
+      <td>2020-06-24 09:58:15</td>
+      <td>2020-07-09 15:38:26</td>
+      <td>403095645</td>
+      <td>1e37a922a4253bb5e514562d3b35e217</td>
+    </tr>
+    <tr>
+      <th>19770</th>
+      <td>528721951</td>
+      <td>510</td>
+      <td>570</td>
+      <td>2018-11-10 13:26:09</td>
+      <td>2018-11-10 13:26:09</td>
+      <td>282657655</td>
+      <td>7a6b8355be0547ea06396ffe48bdce86</td>
+    </tr>
+    <tr>
+      <th>159205</th>
+      <td>1434552305</td>
+      <td>162</td>
+      <td>512</td>
+      <td>2020-08-26 13:46:13</td>
+      <td>2020-09-09 05:07:16</td>
+      <td>417622430</td>
+      <td>bd5d25bba18a99c7455afd1e79ac8890</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>87643</th>
+      <td>714392485</td>
+      <td>12</td>
+      <td>102</td>
+      <td>2019-06-13 17:28:22</td>
+      <td>2019-06-13 17:28:22</td>
+      <td>329099332</td>
+      <td>72120fae16756757ad1faf83c6e554f9</td>
+    </tr>
+    <tr>
+      <th>6849</th>
+      <td>587082309</td>
+      <td>57</td>
+      <td>101</td>
+      <td>2019-02-01 11:53:21</td>
+      <td>2019-04-11 16:02:20</td>
+      <td>278822083</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>63778</th>
+      <td>602676802</td>
+      <td>9</td>
+      <td>101</td>
+      <td>2019-02-19 16:35:24</td>
+      <td>2019-02-19 21:52:28</td>
+      <td>311227034</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>148614</th>
+      <td>1299203927</td>
+      <td>48</td>
+      <td>100</td>
+      <td>2020-06-23 23:35:10</td>
+      <td>2020-07-08 13:58:05</td>
+      <td>403095645</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>159184</th>
+      <td>1438153664</td>
+      <td>31</td>
+      <td>100</td>
+      <td>2020-08-28 01:46:22</td>
+      <td>2020-08-29 21:20:34</td>
+      <td>417622430</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>151 rows × 7 columns</p>
+</div>
+
+
+
+tips：
+- 回答下的评论一般不是进一步深入讨论问题的地方
+- 评论数量多，或者评论比赞数多，基本可以定义是战况激烈的对线现场
+
+#### 匿名者的回答
+
+
+```python
+answers[answers.create_by == "0"].merge(
+    questions[["question_id", "title"]], on="question_id"
+).sort_values(by="voteups", ascending=False).head(20).iloc[:, [-1, 0, 1, 2, 3]]
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>title</th>
+      <th>answer_id</th>
+      <th>voteups</th>
+      <th>comments</th>
+      <th>create_at</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>11407</th>
+      <td>两年后第一代火箭少女团解散，各成员的前途会有怎样的发展？</td>
+      <td>587169624</td>
+      <td>5719</td>
+      <td>3568</td>
+      <td>2019-02-01 13:58:27</td>
+    </tr>
+    <tr>
+      <th>16012</th>
+      <td>讨厌杨超越的大约都是哪些人？</td>
+      <td>1199374268</td>
+      <td>1481</td>
+      <td>1284</td>
+      <td>2020-05-04 15:38:26</td>
+    </tr>
+    <tr>
+      <th>24885</th>
+      <td>杨超越的颜放在韩国女团中可以称之为神颜吗？</td>
+      <td>814984359</td>
+      <td>1782</td>
+      <td>1179</td>
+      <td>2019-09-06 10:33:04</td>
+    </tr>
+    <tr>
+      <th>13290</th>
+      <td>如何评价众多偶像称杨超越为杨老师？</td>
+      <td>524459264</td>
+      <td>1082</td>
+      <td>1053</td>
+      <td>2018-11-04 04:49:49</td>
+    </tr>
+    <tr>
+      <th>20797</th>
+      <td>关于杨超越你们怎么看？</td>
+      <td>647873638</td>
+      <td>5793</td>
+      <td>1040</td>
+      <td>2019-04-11 13:48:57</td>
+    </tr>
+    <tr>
+      <th>7910</th>
+      <td>杨超越的颜值是否过誉？</td>
+      <td>446618984</td>
+      <td>10260</td>
+      <td>893</td>
+      <td>2018-07-19 17:37:09</td>
+    </tr>
+    <tr>
+      <th>10653</th>
+      <td>怎样看待杨超越被称之为锦鲤？</td>
+      <td>481365122</td>
+      <td>7641</td>
+      <td>844</td>
+      <td>2018-08-30 00:56:17</td>
+    </tr>
+    <tr>
+      <th>21534</th>
+      <td>如何评价《哈哈农夫》四位嘉宾（贾乃亮、金瀚、杨超越、王源）之间的关系？</td>
+      <td>691683292</td>
+      <td>5101</td>
+      <td>796</td>
+      <td>2019-05-22 18:33:46</td>
+    </tr>
+    <tr>
+      <th>4790</th>
+      <td>如何评价《创造101》总决赛22人名单？</td>
+      <td>415323834</td>
+      <td>3322</td>
+      <td>657</td>
+      <td>2018-06-11 23:40:27</td>
+    </tr>
+    <tr>
+      <th>11888</th>
+      <td>如何评价杨超越成为miumiu唯一官方受邀中国艺人前往巴黎时装周？</td>
+      <td>501185228</td>
+      <td>10323</td>
+      <td>611</td>
+      <td>2018-09-30 12:31:06</td>
+    </tr>
+    <tr>
+      <th>6433</th>
+      <td>如何看待《创造101》总决赛杨超越第三名出道？</td>
+      <td>424742485</td>
+      <td>1760</td>
+      <td>573</td>
+      <td>2018-06-24 01:36:13</td>
+    </tr>
+    <tr>
+      <th>14448</th>
+      <td>杨超越性格如何？</td>
+      <td>1195978026</td>
+      <td>4918</td>
+      <td>508</td>
+      <td>2020-05-02 23:42:39</td>
+    </tr>
+    <tr>
+      <th>10286</th>
+      <td>是否很多人都对杨超越比较宽容？原因是什么？</td>
+      <td>473532783</td>
+      <td>2150</td>
+      <td>471</td>
+      <td>2018-08-20 14:48:35</td>
+    </tr>
+    <tr>
+      <th>1132</th>
+      <td>为什么杨超越唱跳实力一般但是有这么多人喜欢？</td>
+      <td>402385960</td>
+      <td>2304</td>
+      <td>468</td>
+      <td>2018-05-27 11:27:51</td>
+    </tr>
+    <tr>
+      <th>4105</th>
+      <td>如何看待《创造101》第七期杨超越发言？</td>
+      <td>408573010</td>
+      <td>655</td>
+      <td>461</td>
+      <td>2018-06-03 21:16:15</td>
+    </tr>
+    <tr>
+      <th>35858</th>
+      <td>你觉得杨超越在《且听凤鸣》中的表现怎么样？</td>
+      <td>1399278371</td>
+      <td>195</td>
+      <td>446</td>
+      <td>2020-08-10 23:07:30</td>
+    </tr>
+    <tr>
+      <th>24442</th>
+      <td>为什么杨超越那么幸运？</td>
+      <td>807595339</td>
+      <td>5152</td>
+      <td>415</td>
+      <td>2019-08-30 08:56:04</td>
+    </tr>
+    <tr>
+      <th>18875</th>
+      <td>你觉得火箭少女里谁最可怜？</td>
+      <td>650125300</td>
+      <td>2580</td>
+      <td>406</td>
+      <td>2019-04-13 18:05:28</td>
+    </tr>
+    <tr>
+      <th>10322</th>
+      <td>是否很多人都对杨超越比较宽容？原因是什么？</td>
+      <td>481155178</td>
+      <td>4365</td>
+      <td>390</td>
+      <td>2018-08-29 19:53:44</td>
+    </tr>
+    <tr>
+      <th>20746</th>
+      <td>关于杨超越你们怎么看？</td>
+      <td>729057082</td>
+      <td>2330</td>
+      <td>388</td>
+      <td>2019-06-27 00:31:26</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+tips
+
+- 知乎明星话题下的匿名回答者不少都带有恶意
+- 但其中能获得高赞的，也可以认为是提出了一些非常规的信息和角度
 
 ## 图表
 
@@ -2485,82 +2893,32 @@ answers.merge(questions[["title", "question_id"]], on="question_id").sort_values
 
 ```python
 figure, ax = plt.subplots(figsize=(14, 8))
-temp2 = temp.set_index(pd.DatetimeIndex(temp.target_created))
-temp2[
-    "target_answer_count"
-    #    'views'
+# temp2 = temp.set_index(pd.DatetimeIndex(temp.target_created))
+questions.set_index("create_at")[
+    # "answer_count"
+    "views"
 ].plot()
-for i in temp2.loc[temp2.target_answer_count > 1000].itertuples():
-    ax.text(
-        i.Index, i.target_answer_count, i.target_answer_count, c="grey", rotation=25
-    )
+for i in questions.set_index("create_at")[
+    questions.set_index("create_at").views > 9000000
+].itertuples():
+    ax.text(i.Index, i.views, i.views, c="grey", rotation=10)
 # for i in temp2.loc[temp2.views>7000000].itertuples():
 #            ax.text(i.Index,i.views,str(format(i.views/1000000,'0.2f'))+'M',c='grey',rotation=25)
 ```
+
+
+![png](output_80_0.png)
+
+
+tips
+
+- 按创建时间顺序的问题浏览次数走势，这实际上是个线图
+- 还是可以大致感受19年3月后的参与度差异
 
 ## todo Soon™
 
 
 #### 回答的语义分析
 
-#### 正向逆向比例随时间变化曲线
+#### 正向态度比例随时间变化曲线
 
-
-```python
-ans.answer_voteup_count.describe()
-```
-
-
-```python
-ans.loc[ans.author_id == "0"].answer_voteup_count.describe()
-```
-
-
-```python
-ans.loc[
-    (ans.author_id == "0") & (ans.answer_voteup_count > 100)
-].answer_voteup_count.describe()
-```
-
-
-```python
-ans.loc[ans.author_id == "0"].sort_values(
-    by="answer_voteup_count", ascending=False
-).head(20).iloc[:, [0, 12, 6, 7, 8, 10, -2]]
-```
-
-
-```python
-%whos
-```
-
-    Variable          Type             Data/Info
-    --------------------------------------------
-    NamespaceMagics   MetaHasTraits    <class 'IPython.core.magi<...>mespace.NamespaceMagics'>
-    a                 DataFrame               question_id    mod<...>n[16341 rows x 7 columns]
-    answers           DataFrame                 answer_id  voteu<...>[162598 rows x 8 columns]
-    create_engine     function         <function create_engine at 0x7f1f9fbdd550>
-    get_ipython       function         <function get_ipython at 0x7f1fde7c45e0>
-    json              module           <module 'json' from '/hom<...>hon3.8/json/__init__.py'>
-    modify            DataFrame               question_id    mod<...>n[31694 rows x 7 columns]
-    np                module           <module 'numpy' from '/ho<...>kages/numpy/__init__.py'>
-    pd                module           <module 'pandas' from '/h<...>ages/pandas/__init__.py'>
-    people            DataFrame                                 <...>n[61800 rows x 7 columns]
-    plt               module           <module 'matplotlib.pyplo<...>es/matplotlib/pyplot.py'>
-    questions         DataFrame              question_id        <...>\n[4130 rows x 9 columns]
-    sys               module           <module 'sys' (built-in)>
-    top               function         <function top at 0x7f1faa99adc0>
-
-
-from sqlalchemy import create_engine
-
-engine = create_engine("sqlite:///test.db", echo=False)
-answers.to_sql("answers", con=engine)
-questions.to_sql('questions',con=engine)
-people.to_sql('people',con=engine)
-modify.to_sql('modify',con=engine)
-
-
-```python
-
-```
