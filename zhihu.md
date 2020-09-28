@@ -224,7 +224,7 @@ tips：
 pd.concat(
     [
         people.set_index("user_id"),
-        #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
+        #    answers.groupby("create_by").voteup_count.count().rename("answers"),
         questions.groupby("create_by").question_id.count().rename("questions"),
         questions.groupby(["create_by", pd.Grouper(key="create_at", freq="y")])
         .question_id.count().rename("questions").reset_index()
@@ -359,7 +359,7 @@ tips
 pd.concat(
     [
         people.set_index("user_id"),
-        #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
+        #    answers.groupby("create_by").voteup_count.count().rename("answers"),
         answers.groupby("create_by").answer_id.count().rename("answers"),
         answers.groupby(["create_by", pd.Grouper(key="create_at", freq="y")])
         .answer_id.count().rename("answers").reset_index()
@@ -493,7 +493,7 @@ tips
 pd.concat(
     [
         people.set_index("user_id"),
-        #    answers.groupby("create_by").voteup_count.count().rename("answer_count"),
+        #    answers.groupby("create_by").voteup_count.count().rename("answers"),
         answers.groupby("create_by").voteups.sum(),
         answers.groupby(["create_by", pd.Grouper(key="create_at", freq="y")])
         .voteups.sum().reset_index()
@@ -501,7 +501,7 @@ pd.concat(
     ],
     axis=1,
 ).sort_values(
-    #  by="answer_count",
+    #  by="answers",
     by=("voteups", pd.Timestamp("2020-12-31")),
     ascending=False,
 ).iloc[:, 6:].head(10)
@@ -1016,7 +1016,7 @@ tips：
 pd.concat(
     [
         questions.set_index("question_id"),
-        #       answers.groupby("create_by").voteup_count.count().rename("answer_count"),
+        #       answers.groupby("create_by").voteup_count.count().rename("answers"),
         modify.groupby("question_id").modify_id.count().rename("modify_count"),
     ],
     axis=1,
@@ -1057,8 +1057,8 @@ pd.concat(
     <tr style="text-align: right;">
       <th></th>
       <th>title</th>
-      <th>answer_count</th>
-      <th>follower_count</th>
+      <th>answers</th>
+      <th>followers</th>
       <th>create_at</th>
       <th>views</th>
       <th>modify_count</th>
@@ -1281,8 +1281,8 @@ pd.concat(
     <tr style="text-align: right;">
       <th></th>
       <th>title</th>
-      <th>answer_count</th>
-      <th>follower_count</th>
+      <th>answers</th>
+      <th>followers</th>
       <th>create_at</th>
       <th>views</th>
       <th>is_hot</th>
@@ -1573,8 +1573,8 @@ tips：
     <tr style="text-align: right;">
       <th></th>
       <th>title</th>
-      <th>answer_count</th>
-      <th>follower_count</th>
+      <th>answers</th>
+      <th>followers</th>
       <th>create_at</th>
       <th>views</th>
       <th>voteups</th>
@@ -1834,7 +1834,7 @@ pd.concat(
     lambda x: x.views
     > 1000000
 ].sort_values(
-    by="answer_count", ascending=True
+    by="answers", ascending=True
 ).head(
     10
 ).iloc[
@@ -1864,8 +1864,8 @@ pd.concat(
     <tr style="text-align: right;">
       <th></th>
       <th>title</th>
-      <th>answer_count</th>
-      <th>follower_count</th>
+      <th>answers</th>
+      <th>followers</th>
       <th>views</th>
       <th>voteups</th>
     </tr>
@@ -1976,7 +1976,7 @@ pd.concat(
     lambda x: x.views
     < 100000
 ].sort_values(
-    by="answer_count", ascending=False
+    by="answers", ascending=False
 ).head(
     10
 ).iloc[
@@ -2006,8 +2006,8 @@ pd.concat(
     <tr style="text-align: right;">
       <th></th>
       <th>title</th>
-      <th>answer_count</th>
-      <th>follower_count</th>
+      <th>answers</th>
+      <th>followers</th>
       <th>create_at</th>
       <th>views</th>
       <th>voteups</th>
@@ -2187,8 +2187,8 @@ pd.concat(
     <tr style="text-align: right;">
       <th></th>
       <th>title</th>
-      <th>answer_count</th>
-      <th>follower_count</th>
+      <th>answers</th>
+      <th>followers</th>
       <th>views</th>
       <th>modify_count</th>
     </tr>
@@ -2895,7 +2895,7 @@ tips
 figure, ax = plt.subplots(figsize=(14, 8))
 # temp2 = temp.set_index(pd.DatetimeIndex(temp.target_created))
 questions.set_index("create_at")[
-    # "answer_count"
+    # "answers"
     "views"
 ].plot()
 for i in questions.set_index("create_at")[
