@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "当知乎讨论杨超越的时候"
+title: "当知乎在讨论杨超越的时候"
 permalink: /z/
 date: "2020-09-28 12:00:00"
 description: "知乎杨超越话题的一些数据整理"
