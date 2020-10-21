@@ -5,16 +5,6 @@ description: This is just another page
 permalink: /z/
 ---
 
-```python
-# import matplotlib
-import matplotlib.pyplot as plt
-
-# import numpy as np
-import pandas as pd
-
-pd.set_option("max_colwidth", 100)
-# pd.options.plotting.backend = "matplotlib"
-```
 
 ## 读取数据
 
@@ -22,99 +12,9 @@ pd.set_option("max_colwidth", 100)
 - 数据抓取的时间是10月7日前后,10月份数据略去
 - 数据已经经过清洗，后续尽量不使用和构造中间变量，所有结果以附加列和查询语句呈现。
 
-```python
-# savepath=""
-savepath = "/home/sopp/docker/csv/db/"
-dbname = "ycy"
-name = '杨超越'
-```
-
-```python
-from sqlalchemy import create_engine
-
-# 前三个斜杠是固定格式，第四个开始才是路径
-engine = create_engine("sqlite:///" + savepath + dbname + ".db", echo=False)
-```
-
-```python
-query = """
-select question_id,title,answers,comments,followers,create_at,create_by,views,tags,GMT_create from questions
-"""
-questions = pd.read_sql_query(query, con=engine)
-questions.create_at = pd.to_datetime(questions.create_at)
-```
-
-questions = questions[questions.create_at < '2020-10']
-
-
-```python
-answers = pd.read_sql("answers", con=engine)
-answers.create_at = pd.to_datetime(answers.create_at)
-```
-
-answers = answers[answers.create_at < '2020-10']
-
-
-```python
-modify = pd.read_sql("modify", con=engine)
-modify.modify_at = pd.to_datetime(modify.modify_at)
-```
-
-modify = modify[modify.modify_at < '2020-10']
-
-
-```python
-people = pd.read_sql("people", con=engine)
-```
-
-people["url"] = "https://www.zhihu.com/people/" + people.user_id.astype(str)
-
-answers["url"] = ("https://www.zhihu.com/question/" +
-                  answers.question_id.astype(str) + "/answer/" +
-                  answers.answer_id.astype(str))
-
 ## summary
 
 按月汇总的六项数据趋势图，可以看个直观印象。
-
-
-```python
-%%time
-{
-    "问题数": questions.question_id.count(),
-    "无回答": questions[
-        questions.question_id.isin(answers.question_id) == False
-    ].question_id.count(),
-    "总赞低于10的问题": answers.groupby("question_id")
-    .voteups.sum()[lambda x: x < 10]
-    .count(),
-    "浏览大于100w": questions[questions.views > 1000000].question_id.count(),
-    "最高浏览数": questions.views.max(),
-    "问题最多获赞": answers.groupby("question_id").voteups.sum().max(),
-    "回答数": answers.answer_id.count(),
-    "匿名回答": answers[answers.create_by == "0"].answer_id.count(),
-    "匿名总获赞": answers[answers.create_by == "0"].voteups.sum(),
-    "获赞小于5的回答": answers[answers.voteups < 5].answer_id.count(),
-    "回答最多获赞": answers.voteups.max(),
-    "千赞回答": answers[answers.voteups > 1000].answer_id.count(),
-    "第一个千赞回答": str(answers[answers.voteups > 1000].create_at.min())[:10],
-    "最后一个千赞回答": str(answers[answers.voteups > 1000].create_at.max())[:10],
-    "累计获赞": answers.voteups.sum(),
-    "浏览数": questions.views.sum(),
-    "回答的评论数": answers.comments.sum(),
-    "热榜锁定次数": modify[
-        (modify.modify_by == "zhihuadmin") & (modify.reason.str.contains("热榜"))
-    ].modify_id.count(),
-    "编辑战": modify.groupby("question_id")
-    .modify_id.count()[lambda x: x > 50]
-    .count(),
-}
-```
-
-    CPU times: user 204 ms, sys: 7.4 ms, total: 211 ms
-    Wall time: 247 ms
-
-
 
 
 
@@ -176,24 +76,6 @@ pd.read_sql_query(query, con=engine).set_index("month").plot(
     title="summary by question created",
 )
 ```
-
-    CPU times: user 1.99 s, sys: 96.9 ms, total: 2.09 s
-    Wall time: 2.45 s
-
-
-
-
-
-    array([[<AxesSubplot:title={'center':'questions'}, xlabel='month'>,
-            <AxesSubplot:title={'center':'answers'}, xlabel='month'>],
-           [<AxesSubplot:title={'center':'views'}, xlabel='month'>,
-            <AxesSubplot:title={'center':'voteups'}, xlabel='month'>],
-           [<AxesSubplot:title={'center':'comments'}, xlabel='month'>,
-            <AxesSubplot:title={'center':'is_hot'}, xlabel='month'>]],
-          dtype=object)
-
-
-
 
     
 ![png](output_16_2.png)
